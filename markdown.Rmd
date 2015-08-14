@@ -1,0 +1,86 @@
+---
+title: "Coursera Project 1"
+author: "Tessa Jones"
+date: "Friday, August 14, 2015"
+output: html_document
+---
+
+This is the results for Project 1 of the Reproducible Research Course for Coursera:
+
+```{r}
+setwd("C:/Users/tejones/Desktop/Coursera/Knitr")
+data <- data.frame(read.csv("activity.csv"))
+data2 <- na.omit(data)
+library(plyr)
+
+
+dailysum <- ddply(data2, .(date),summarise, sum=sum(steps))
+```
+Total number of steps taken per day
+```{r}
+dailysum
+
+```
+Histogram of the sum of steps taken per day is shown below
+```{r}
+hist(dailysum$sum, xlab = 'Days', ylab = 'Steps', main = 'Steps per Day')
+```
+
+
+Mean of the Steps taken per day is 10766.19 steps 
+```{r}
+mean(dailysum$sum)
+```
+Median of the Steps taken per day is 10765 steps
+```{r}
+median(dailysum$sum)
+
+dailyinterval <- ddply(data2, .(interval),summarise, mean=mean(steps))
+
+plot(dailyinterval$interval, dailyinterval$mean, type = 'l', xlab = 'Interval', ylab = 'Average Steps', main = 'Average Steps Per Interval')
+
+```
+
+
+The interval with the maximum mean is 835, as shown below
+```{r}
+dailyinterval[dailyinterval$mean == max(dailyinterval$mean),]
+
+```
+The number of NA values is 2304, as shown below
+```{r}
+sum(is.na(data))
+
+intervalmerge <- merge(data, dailyinterval, by.x = 'interval', by.y = 'interval')
+
+intervalmerge$steps[is.na(intervalmerge$steps)] <- intervalmerge$mean[is.na(intervalmerge$steps)]
+
+dailysum2 <- ddply(intervalmerge, .(date),summarise, sum=sum(steps))
+
+hist(dailysum2$sum, xlab = 'Days', ylab = 'Steps', main = 'New Steps per Day')
+```
+
+
+The NA values were replaced with the total mean interval value and produced the results above
+```{r}
+ 
+intervalmerge$day <- weekdays(as.Date(dailysum2$date))
+
+intervalmerge[intervalmerge$day %in% c("Saturday","Sunday"),]$day <- "Weekend"
+
+intervalmerge[intervalmerge$day %in% c("Monday","Tuesday","Wednesday","Thursday","Friday"),]$day <- "Weekday"
+
+intervalmerge <- ddply(intervalmerge, .(interval,day),summarise, mean=mean(steps))
+
+library(lattice)
+
+xyplot(intervalmerge$mean~intervalmerge$interval|intervalmerge$day, type = 'l', xlab = 'Interval', ylab = 'Mean')
+
+```
+
+
+Above is a representation of mean interval values for Weedays vs. Weekends
+```{r}
+```
+
+
