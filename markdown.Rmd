@@ -1,86 +1,61 @@
 ---
-title: "Coursera Project 1"
+title: "Reproducible Research Project 1"
 author: "Tessa Jones"
-date: "Friday, August 14, 2015"
+date: "January 20, 2016"
 output: html_document
 ---
 
-This is the results for Project 1 of the Reproducible Research Course for Coursera:
+The following outlines the basic analysis of data retrieved from a personal activity monitoring device that measures the number of steps taken by an individual at 5 m inute intervals over the course of two months. 
 
-```{r}
-setwd("C:/Users/tejones/Desktop/Coursera/Knitr")
-data <- data.frame(read.csv("activity.csv"))
-data2 <- na.omit(data)
+Step one is to import to csv file with the activity data.
+
+```{r, echo=TRUE}
 library(plyr)
-
-
-dailysum <- ddply(data2, .(date),summarise, sum=sum(steps))
-```
-Total number of steps taken per day
-```{r}
-dailysum
-
-```
-Histogram of the sum of steps taken per day is shown below
-```{r}
-hist(dailysum$sum, xlab = 'Days', ylab = 'Steps', main = 'Steps per Day')
+setwd('C:/excercisedata/repdata-data-activity')
+data <- read.csv('activity.csv', stringsAsFactors= FALSE)
 ```
 
+The total number of steps taken per day is summarized below and displayed as a histogram.
 
-Mean of the Steps taken per day is 10766.19 steps 
-```{r}
-mean(dailysum$sum)
-```
-Median of the Steps taken per day is 10765 steps
-```{r}
-median(dailysum$sum)
-
-dailyinterval <- ddply(data2, .(interval),summarise, mean=mean(steps))
-
-plot(dailyinterval$interval, dailyinterval$mean, type = 'l', xlab = 'Interval', ylab = 'Average Steps', main = 'Average Steps Per Interval')
-
+```{r, echo=TRUE}
+sumbyday <- ddply(data, .(date), summarize, sum = sum(steps, na.rm = TRUE))
+hist(sumbyday$sum, xlab = 'Days', ylab = 'Steps', main = 'Steps per Day')
 ```
 
+The mean number of steps taken per day is 37.3826 and the median is 0
 
-The interval with the maximum mean is 835, as shown below
-```{r}
-dailyinterval[dailyinterval$mean == max(dailyinterval$mean),]
-
-```
-The number of NA values is 2304, as shown below
-```{r}
-sum(is.na(data))
-
-intervalmerge <- merge(data, dailyinterval, by.x = 'interval', by.y = 'interval')
-
-intervalmerge$steps[is.na(intervalmerge$steps)] <- intervalmerge$mean[is.na(intervalmerge$steps)]
-
-dailysum2 <- ddply(intervalmerge, .(date),summarise, sum=sum(steps))
-
-hist(dailysum2$sum, xlab = 'Days', ylab = 'Steps', main = 'New Steps per Day')
+```{r, echo=TRUE}
+mean(data$steps, na.rm = TRUE)
+median(data$steps, na.rm = TRUE)
 ```
 
+A time series plot below was generated to identify the average daily activity.  The 5 minute time interval that, on average, has the most number of steps is 835.  
 
-The NA values were replaced with the total mean interval value and produced the results above
-```{r}
- 
-intervalmerge$day <- weekdays(as.Date(dailysum2$date))
+```{r, echo=TRUE}
+meanbyint <- ddply(data, .(interval), summarize, mean=mean(steps, na.rm = TRUE))
+library(ggplot2)
+ggplot(meanbyint, aes(interval, mean)) + geom_line() + xlab("5 Minute Interval of Day") + ylab("Number of Steps")
+```
 
-intervalmerge[intervalmerge$day %in% c("Saturday","Sunday"),]$day <- "Weekend"
+There are 2304 missing values from the data set, here I have replaced the missing values with the average number of steps for that given time interval. The following produces a histrogram of the sum of steps for each day using the new dataset.  There is small differences between the two histograms (before and after accounting for the missing values). The first few weeks have a lower number of steps per day afterwards.  The mean and median values remained the same both before and after the data replacement.
+```{r, echo=TRUE}
+sum(is.na(data$steps))
+sub1 <- merge(x = data, y = meanbyint, by = "interval", all.y = TRUE)
+sub2 <- transform(sub1, steps=ifelse(is.na(sub1$steps),sub1$mean, sub1$steps))
+sumbyday2 <- ddply(sub2, .(date), summarize, sum = sum(steps, na.rm = TRUE))
+hist(sumbyday2$sum, xlab = 'Days', ylab = 'Steps', main = 'Steps per Day')
+mean(sub2$steps, na.rm = TRUE)
+median(sub2$steps, na.rm = TRUE)
+```
 
-intervalmerge[intervalmerge$day %in% c("Monday","Tuesday","Wednesday","Thursday","Friday"),]$day <- "Weekday"
-
-intervalmerge <- ddply(intervalmerge, .(interval,day),summarise, mean=mean(steps))
-
+Now we want to compare the differences in activity between weekends and weekdays.  The dates have been defined as being either a weeday or a weekend and a panel plot was generated to differentiate between the steps at each interval between weekends and weekdays.  
+```{r, echo=TRUE}
+sub2$day <- weekdays(as.Date(sub2$date))
+sub2[sub2$day %in% c("Saturday", "Sunday"),]$day <- "Weekend"
+sub2[sub2$day %in% c("Monday", "Tuesday","Wednesday","Thursday","Friday"),]$day <- "Weekday"
+sub2 <- ddply(sub2, .(interval,day), summarise, meanReal=mean(steps))
 library(lattice)
-
-xyplot(intervalmerge$mean~intervalmerge$interval|intervalmerge$day, type = 'l', xlab = 'Interval', ylab = 'Mean')
-
-```
-
-
-Above is a representation of mean interval values for Weedays vs. Weekends
-```{r}
+xyplot(sub2$meanReal~sub2$interval|sub2$day, type = 'l', xlab = 'Interval', ylab = 'Mean')
 ```
 
 
